@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   BadgeCheck,
   Bell,
@@ -16,6 +17,16 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,10 +54,16 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
   const handleLogout = () => {
     Cookies.remove('token')
     router.push('/dk-login')
+    setIsLogoutDialogOpen(false)
+  }
+
+  const handleLogoutClick = () => {
+    setIsLogoutDialogOpen(true)
   }
 
   return (
@@ -110,13 +127,39 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onClick={handleLogoutClick}>
               <LogOut />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Logout</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin keluar dari sistem? Anda perlu login kembali untuk mengakses dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsLogoutDialogOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleLogout}
+            >
+              Ya, Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarMenu>
   )
 }

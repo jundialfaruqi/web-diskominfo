@@ -24,13 +24,28 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
   const [success, setSuccess] = useState("");
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [emailValid, setEmailValid] = useState(false);
+  const [passwordValid, setPasswordValid] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string[]}>({});
   const router = useRouter();
 
   // Email validation
   useEffect(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     setEmailValid(emailRegex.test(email));
-  }, [email]);
+    // Clear email field errors when user types
+    if (fieldErrors.email) {
+      setFieldErrors(prev => ({ ...prev, email: [] }));
+    }
+  }, [email, fieldErrors.email]);
+
+  // Password validation
+  useEffect(() => {
+    setPasswordValid(password.length >= 6);
+    // Clear password field errors when user types
+    if (fieldErrors.password) {
+      setFieldErrors(prev => ({ ...prev, password: [] }));
+    }
+  }, [password, fieldErrors.password]);
 
   // Caps lock detection
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -42,6 +57,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
     setIsLoading(true);
     setError("");
     setSuccess("");
+    setFieldErrors({});
 
     try {
       const response = await axios.post(
@@ -73,7 +89,30 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
       
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || "Login gagal. Silakan coba lagi.";
+      let errorMessage = "Login gagal. Silakan coba lagi.";
+      
+      if (err.response?.status === 422) {
+        // Validation errors
+        const validationErrors = err.response.data.errors;
+        if (validationErrors) {
+          setFieldErrors(validationErrors);
+          const errorMessages = [];
+          for (const field in validationErrors) {
+            errorMessages.push(...validationErrors[field]);
+          }
+          errorMessage = "Terdapat kesalahan pada input form";
+        }
+      } else if (err.response?.status === 401) {
+        // Authentication error
+        errorMessage = err.response.data.message || "Email atau password tidak valid";
+      } else if (err.response?.data?.message) {
+        // Other server errors
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        // Legacy error format
+        errorMessage = err.response.data.error;
+      }
+      
       setError(errorMessage);
       
       // Call error callback if provided
@@ -127,16 +166,26 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
               placeholder="masukkan@email.com"
               className={cn(
                 "pl-10 pr-10 transition-all duration-200",
-                email && emailValid && "border-green-500 focus-visible:border-green-500",
-                email && !emailValid && "border-red-500 focus-visible:border-red-500"
+                fieldErrors.email?.length > 0 && "border-red-500 focus-visible:border-red-500",
+                email && emailValid && !fieldErrors.email?.length && "border-green-500 focus-visible:border-green-500",
+                email && !emailValid && !fieldErrors.email?.length && "border-red-500 focus-visible:border-red-500"
               )}
               required
             />
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            {email && emailValid && (
+            {email && emailValid && !fieldErrors.email?.length && (
               <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-green-500 animate-in zoom-in-50" />
             )}
+            {fieldErrors.email?.length > 0 && (
+              <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-red-500" />
+            )}
           </div>
+          {fieldErrors.email?.length > 0 && (
+            <div className="text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>{fieldErrors.email[0]}</span>
+            </div>
+          )}
         </div>
 
         {/* Password Field */}
@@ -151,19 +200,48 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Masukkan password"
-              className="pl-10 pr-10"
+              placeholder="Masukkan password (min. 6 karakter)"
+              className={cn(
+                "pl-10 pr-12 transition-all duration-200",
+                fieldErrors.password?.length > 0 && "border-red-500 focus-visible:border-red-500",
+                password && passwordValid && !fieldErrors.password?.length && "border-green-500 focus-visible:border-green-500",
+                password && !passwordValid && !fieldErrors.password?.length && "border-red-500 focus-visible:border-red-500"
+              )}
               required
             />
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+              {password && passwordValid && !fieldErrors.password?.length && (
+                <CheckCircle className="w-4 h-4 text-green-500 animate-in zoom-in-50" />
+              )}
+              {fieldErrors.password?.length > 0 && (
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              )}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
+          
+          {/* Field Errors */}
+          {fieldErrors.password?.length > 0 && (
+            <div className="text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>{fieldErrors.password[0]}</span>
+            </div>
+          )}
+          
+          {/* Password Requirements */}
+          {password && !passwordValid && !fieldErrors.password?.length && (
+            <div className="text-sm text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              <span>Password minimal 6 karakter</span>
+            </div>
+          )}
           
           {/* Caps Lock Warning */}
           {capsLockOn && password && (
@@ -191,7 +269,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isLoading || !emailValid || !password}
+          disabled={isLoading || !emailValid || !passwordValid}
           className={cn(
             "w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-200 transform",
             "hover:scale-[1.02] active:scale-[0.98]",
