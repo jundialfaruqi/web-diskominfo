@@ -3,24 +3,24 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import {
-  AudioWaveform,
+  // AudioWaveform,
   BookOpen,
-  Bot,
-  Command,
+  // Bot,
+  // Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
   Settings2,
-  SquareTerminal,
+  // SquareTerminal,
   Home,
   Users,
-  Newspaper,
-  Bell,
-  Image,
+  // Newspaper,
+  // Bell,
+  // Image,
   BarChart3,
-  Settings,
-  Search,
+  // Settings,
+  // Search,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
