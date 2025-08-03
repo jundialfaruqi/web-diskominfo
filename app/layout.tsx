@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
+import ConditionalHeader from "@/components/ConditionalHeader";
+
+export const metadata: Metadata = {
+  title: "Dinas Komunikasi Informatika dan Statistik Kota Pekanbaru",
+  description: "Website resmi Dinas Komunikasi Informatika dan Statistik Kota Pekanbaru",
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,11 +18,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Dinas Komunikasi Informatika dan Statistik Kota Pekanbaru",
-  description: "Website resmi Dinas Komunikasi Informatika dan Statistik Kota Pekanbaru",
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Header />
+        <ConditionalHeader />
         {children}
       </body>
     </html>
