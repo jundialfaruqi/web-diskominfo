@@ -1,84 +1,193 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Search, Plus, MoreHorizontal, Mail, Phone, Calendar } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Users, Search, Plus, RefreshCw, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import Cookies from "js-cookie"
+import { UserTable } from "@/components/users/UserTable"
+import { UserForm } from "@/components/users/UserForm"
+import { UserStats } from "@/components/users/UserStats"
+
+interface User {
+  id: number
+  name: string
+  email: string
+  role: string
+  department: string
+  phone: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+interface UserStats {
+  total_users: number
+  active_users: number
+  inactive_users: number
+  super_admins: number
+  editors: number
+}
 
 export default function UsersPage() {
-  const users = [
-    {
-      id: 1,
-      name: "Ahmad Rizki",
-      email: "ahmad.rizki@pekanbaru.go.id",
-      role: "Admin",
-      department: "Diskominfotik",
-      phone: "0761-123-4567",
-      joinDate: "2023-01-15",
-      status: "Active",
-      avatar: "AR"
-    },
-    {
-      id: 2,
-      name: "Siti Nurhaliza",
-      email: "siti.nurhaliza@pekanbaru.go.id",
-      role: "Editor",
-      department: "Humas",
-      phone: "0761-234-5678",
-      joinDate: "2023-03-20",
-      status: "Active",
-      avatar: "SN"
-    },
-    {
-      id: 3,
-      name: "Budi Santoso",
-      email: "budi.santoso@pekanbaru.go.id",
-      role: "Operator",
-      department: "IT Support",
-      phone: "0761-345-6789",
-      joinDate: "2023-06-10",
-      status: "Active",
-      avatar: "BS"
-    },
-    {
-      id: 4,
-      name: "Maya Sari",
-      email: "maya.sari@pekanbaru.go.id",
-      role: "Editor",
-      department: "Publikasi",
-      phone: "0761-456-7890",
-      joinDate: "2023-08-05",
-      status: "Inactive",
-      avatar: "MS"
-    },
-    {
-      id: 5,
-      name: "Dedi Kurniawan",
-      email: "dedi.kurniawan@pekanbaru.go.id",
-      role: "Admin",
-      department: "Diskominfotik",
-      phone: "0761-567-8901",
-      joinDate: "2023-09-12",
-      status: "Active",
-      avatar: "DK"
-    }
-  ]
+  const [users, setUsers] = useState<User[]>([])
+  const [stats, setStats] = useState<UserStats>({
+    total_users: 0,
+    active_users: 0,
+    inactive_users: 0,
+    super_admins: 0,
+    editors: 0
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const getRoleColor = (role: string) => {
-    const colors: { [key: string]: string } = {
-      'Admin': 'bg-red-100 text-red-800',
-      'Editor': 'bg-blue-100 text-blue-800',
-      'Operator': 'bg-green-100 text-green-800'
+  const fetchUsers = async (page = 1, search = '', role = '', status = '') => {
+    try {
+      const token = Cookies.get('token')
+      if (!token) {
+        toast.error('Token tidak ditemukan. Silakan login kembali.')
+        return
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: '10'
+      })
+      
+      if (search) params.append('search', search)
+      if (role) params.append('role', role)
+      if (status) params.append('status', status)
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/users?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Token expired atau tidak valid
+          Cookies.remove('token')
+          toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
+          window.location.href = '/dk-login'
+          return
+        }
+        toast.error(data.message || 'Gagal mengambil data user')
+        setUsers([]) // Kosongkan data jika ada error
+        return
+      }
+
+      setUsers(data.data.data)
+      setCurrentPage(data.data.current_page)
+      setTotalPages(data.data.last_page)
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Terjadi kesalahan saat mengambil data user')
     }
-    return colors[role] || 'bg-gray-100 text-gray-800'
   }
 
-  const getStatusColor = (status: string) => {
-    return status === 'Active' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-red-100 text-red-800'
+  const fetchStats = async () => {
+    try {
+      const token = Cookies.get('token')
+      if (!token) return
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/users/stats/overview`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setStats(data.data)
+      } else if (response.status === 401) {
+        // Token expired atau tidak valid
+        Cookies.remove('token')
+        toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
+        window.location.href = '/dk-login'
+        return
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
   }
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await Promise.all([
+      fetchUsers(
+        currentPage, 
+        searchTerm, 
+        roleFilter === 'all' ? '' : roleFilter, 
+        statusFilter === 'all' ? '' : statusFilter
+      ),
+      fetchStats()
+    ])
+    setIsRefreshing(false)
+  }
+
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchUsers(1, searchTerm, roleFilter, statusFilter)
+  }
+
+  const handleFilterChange = (type: 'role' | 'status', value: string) => {
+    const filterValue = value === 'all' ? '' : value
+    if (type === 'role') {
+      setRoleFilter(value)
+      fetchUsers(1, searchTerm, filterValue, statusFilter === 'all' ? '' : statusFilter)
+    } else {
+      setStatusFilter(value)
+      fetchUsers(1, searchTerm, roleFilter === 'all' ? '' : roleFilter, filterValue)
+    }
+    setCurrentPage(1)
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    fetchUsers(page, searchTerm, roleFilter, statusFilter)
+  }
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      await Promise.all([
+        fetchUsers(),
+        fetchStats()
+      ])
+      setIsLoading(false)
+    }
+    
+    loadData()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -89,143 +198,126 @@ export default function UsersPage() {
             Kelola pengguna dan hak akses sistem admin
           </p>
         </div>
-        <Button className="flex items-center gap-2 w-full sm:w-auto">
-          <Plus className="h-4 w-4" />
-          Tambah User Baru
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah User
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">
-              +2 user baru bulan ini
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.status === 'Active').length}</div>
-            <p className="text-xs text-muted-foreground">
-              80% dari total users
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <Users className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.role === 'Admin').length}</div>
-            <p className="text-xs text-muted-foreground">
-              Hak akses penuh
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Editors</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.role === 'Editor').length}</div>
-            <p className="text-xs text-muted-foreground">
-              Hak akses konten
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <UserStats stats={stats} />
 
-      {/* Search and Filter */}
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter & Pencarian</CardTitle>
+          <CardDescription>
+            Gunakan filter di bawah untuk mencari user tertentu
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Cari berdasarkan nama, email, atau department..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Select value={roleFilter} onValueChange={(value) => handleFilterChange('role', value)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Role</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="editor">Editor</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleSearch} className="w-full sm:w-auto">
+              <Search className="h-4 w-4 mr-2" />
+              Cari
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Users Table */}
       <Card>
         <CardHeader>
           <CardTitle>Daftar Users</CardTitle>
           <CardDescription>
-            Kelola dan monitor aktivitas pengguna sistem
+            Total {stats.total_users} users terdaftar dalam sistem
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input 
-                placeholder="Cari berdasarkan nama, email, atau department..." 
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" className="w-full sm:w-auto">Filter</Button>
-          </div>
-
-          {/* Users Table */}
-          <div className="space-y-4">
-            {users.map((user) => (
-              <div key={user.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  {/* User Info */}
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                      {user.avatar}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold truncate">{user.name}</h3>
-                      <div className="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 gap-1 sm:gap-4">
-                        <div className="flex items-center">
-                          <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
-                          <span className="truncate">{user.email}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
-                          <span>{user.phone}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Department and Actions */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-4">
-                    <div className="text-left lg:text-right">
-                      <div className="text-sm font-medium">{user.department}</div>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Bergabung {user.joinDate}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between sm:justify-start gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                          {user.status}
-                        </span>
-                      </div>
-                      
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+          <UserTable users={users} onRefresh={handleRefresh} />
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Halaman {currentPage} dari {totalPages}
               </div>
-            ))}
-          </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Create User Form */}
+      <UserForm
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onSuccess={handleRefresh}
+        mode="create"
+      />
     </div>
   )
 }

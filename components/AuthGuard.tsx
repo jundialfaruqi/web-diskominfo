@@ -13,17 +13,43 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter()
 
   useEffect(() => {
-    const token = Cookies.get('token')
-    
-    if (!token) {
-      // Jika tidak ada token, redirect ke halaman login
-      router.push('/dk-login')
-      setIsAuthenticated(false)
-    } else {
-      // Jika ada token, anggap user sudah login
-      // Di implementasi nyata, Anda bisa memverifikasi token ke backend
-      setIsAuthenticated(true)
+    const validateToken = async () => {
+      const token = Cookies.get('token')
+      
+      if (!token) {
+        // Jika tidak ada token, redirect ke halaman login
+        router.push('/dk-login')
+        setIsAuthenticated(false)
+        return
+      }
+
+      try {
+        // Verifikasi token ke backend
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/user`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        })
+
+        if (response.ok) {
+          setIsAuthenticated(true)
+        } else {
+          // Token tidak valid, hapus dan redirect
+          Cookies.remove('token')
+          router.push('/dk-login')
+          setIsAuthenticated(false)
+        }
+      } catch (error) {
+        // Error saat validasi, anggap token tidak valid
+        console.error('Token validation error:', error)
+        Cookies.remove('token')
+        router.push('/dk-login')
+        setIsAuthenticated(false)
+      }
     }
+    
+    validateToken()
   }, [router])
 
   // Tampilkan loading saat mengecek autentikasi
