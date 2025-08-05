@@ -1,9 +1,13 @@
 "use client"
 
+import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, FileText, Image, Bell, TrendingUp, Eye } from "lucide-react"
 
 export default function AdminDashboard() {
+  useEffect(() => {
+    document.title = 'Dashboard - Admin Panel'
+  }, [])
   const stats = [
     {
       title: "Total Users",

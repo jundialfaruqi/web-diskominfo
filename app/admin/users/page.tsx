@@ -146,10 +146,15 @@ export default function UsersPage() {
     setIsRefreshing(false)
   }
 
-  const handleSearch = () => {
-    setCurrentPage(1)
-    fetchUsers(1, searchTerm, roleFilter, statusFilter)
-  }
+  // Live search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1)
+      fetchUsers(1, searchTerm, roleFilter === 'all' ? '' : roleFilter, statusFilter === 'all' ? '' : statusFilter)
+    }, 500) // Debounce 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
 
   const handleFilterChange = (type: 'role' | 'status', value: string) => {
     const filterValue = value === 'all' ? '' : value
@@ -169,6 +174,9 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
+    // Set page title
+    document.title = 'Manajemen Users - Admin Dashboard'
+    
     const loadData = async () => {
       setIsLoading(true)
       await Promise.all([
@@ -230,7 +238,8 @@ export default function UsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Input Pencarian - Sebelah Kiri */}
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -238,35 +247,35 @@ export default function UsersPage() {
                   placeholder="Cari berdasarkan nama, email, atau department..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   className="pl-10"
                 />
               </div>
             </div>
-            <Select value={roleFilter} onValueChange={(value) => handleFilterChange('role', value)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Role</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="editor">Editor</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={handleSearch} className="w-full sm:w-auto">
-              <Search className="h-4 w-4 mr-2" />
-              Cari
-            </Button>
+            
+            {/* Filter - Sebelah Kanan */}
+            <div className="flex flex-col sm:flex-row gap-4 lg:w-auto">
+              <Select value={roleFilter} onValueChange={(value) => handleFilterChange('role', value)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -22,6 +23,32 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  
+  // Function to get page name based on pathname
+  const getPageName = () => {
+    console.log('Current pathname:', pathname) // Debug log
+    if (pathname === '/admin' || pathname === '/admin/dashboard') {
+      return 'Dashboard'
+    }
+    if (pathname === '/admin/users') {
+      return 'Users'
+    }
+    if (pathname === '/admin/news') {
+      return 'Berita'
+    }
+    if (pathname === '/admin/gallery') {
+      return 'Galeri'
+    }
+    if (pathname === '/admin/announcements') {
+      return 'Pengumuman'
+    }
+    // Default fallback
+    const segments = pathname.split('/')
+    const lastSegment = segments[segments.length - 1]
+    return lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1)
+  }
+  
   return (
     <AuthGuard>
       <SidebarProvider>
@@ -43,7 +70,7 @@ export default function AdminLayout({
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Dashboard</BreadcrumbPage>
+                    <BreadcrumbPage>{getPageName()}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
