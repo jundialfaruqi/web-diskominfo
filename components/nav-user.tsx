@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   BadgeCheck,
   Bell,
@@ -8,9 +8,10 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  Shield,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import Cookies from "js-cookie"
+import { useAuth } from "@/contexts/AuthContext"
 
 import {
   Avatar,
@@ -43,24 +44,29 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
+export function NavUser() {
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const { user, logout } = useAuth()
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
+  
+  // Debug user data changes
+  useEffect(() => {
+    console.log('NavUser: User data changed', {
+      user: user?.name,
+      roles: user?.roles?.map(r => r.name)
+    })
+  }, [user, user?.roles])
 
   const handleLogout = () => {
-    Cookies.remove('token')
+    logout()
     router.push('/dk-login')
     setIsLogoutDialogOpen(false)
   }
+
+  if (!user) return null
+
+  const userRole = user.roles && user.roles.length > 0 ? user.roles[0].name : 'user'
 
   const handleLogoutClick = () => {
     setIsLogoutDialogOpen(true)
@@ -81,7 +87,7 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+                <span className="truncate text-xs">{user.email}</span>     
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -101,6 +107,10 @@ export function NavUser({
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    {userRole}
+                  </span>
                 </div>
               </div>
             </DropdownMenuLabel>

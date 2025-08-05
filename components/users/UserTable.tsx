@@ -30,14 +30,15 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { MoreHorizontal, Edit, Trash2, Mail, Phone } from "lucide-react"
 import { toast } from "sonner"
-import Cookies from "js-cookie"
+import { useAuth } from "@/contexts/AuthContext"
 import { UserForm } from "./UserForm"
+import { ShowForRoles } from "@/components/RoleGuard"
 
 interface User {
   id: number
   name: string
   email: string
-  role: string
+  roles: { id: number; name: string }[]
   department: string
   phone: string
   status: string
@@ -51,6 +52,7 @@ interface UserTableProps {
 }
 
 export function UserTable({ users, onRefresh }: UserTableProps) {
+  const { user: currentUser, token } = useAuth()
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -64,8 +66,8 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
       .slice(0, 2)
   }
 
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
+  const getRoleBadgeVariant = (roleName: string) => {
+    switch (roleName) {
       case 'super_admin':
         return 'destructive'
       case 'editor':
@@ -79,14 +81,14 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
     return status === 'active' ? 'default' : 'secondary'
   }
 
-  const formatRole = (role: string) => {
-    switch (role) {
+  const formatRole = (roleName: string) => {
+    switch (roleName) {
       case 'super_admin':
         return 'Super Admin'
       case 'editor':
         return 'Editor'
       default:
-        return role
+        return roleName
     }
   }
 
@@ -107,7 +109,6 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
 
     setIsDeleting(true)
     try {
-      const token = Cookies.get('token')
       if (!token) {
         toast.error('Token tidak ditemukan. Silakan login kembali.')
         return
@@ -126,7 +127,6 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
       if (!response.ok) {
         if (response.status === 401) {
           // Token expired atau tidak valid
-          Cookies.remove('token')
           toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
           window.location.href = '/dk-login'
           return
@@ -188,9 +188,13 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {formatRole(user.role)}
-                    </Badge>
+                    {user.roles && user.roles.length > 0 ? (
+                      <Badge variant={getRoleBadgeVariant(user.roles[0].name)}>
+                        {formatRole(user.roles[0].name)}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">No Role</Badge>
+                    )}
                   </TableCell>
                   <TableCell>{user.department}</TableCell>
                   <TableCell>
@@ -210,26 +214,28 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
                     {formatDate(user.created_at)}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => setDeletingUser(user)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Hapus
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ShowForRoles roles={['super_admin']}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeletingUser(user)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </ShowForRoles>
                   </TableCell>
                 </TableRow>
               ))

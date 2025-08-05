@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ConditionalHeader from "@/components/ConditionalHeader";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Dinas Komunikasi Informatika dan Statistik Kota Pekanbaru",
@@ -28,8 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ConditionalHeader />
-        {children}
+        <AuthProvider>
+          <ConditionalHeader />
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

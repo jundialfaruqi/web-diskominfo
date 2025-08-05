@@ -17,12 +17,13 @@ import Cookies from "js-cookie"
 import { UserTable } from "@/components/users/UserTable"
 import { UserForm } from "@/components/users/UserForm"
 import { UserStats } from "@/components/users/UserStats"
+import { RoleGuard } from "@/components/RoleGuard"
 
 interface User {
   id: number
   name: string
   email: string
-  role: string
+  roles: { id: number; name: string }[]
   department: string
   phone: string
   status: string
@@ -197,7 +198,8 @@ export default function UsersPage() {
     )
   }
   return (
-    <div className="space-y-6">
+    <RoleGuard allowedPermissions={['view users']} redirectTo="/admin/dashboard">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -320,13 +322,14 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Create User Form */}
-      <UserForm
-        isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onSuccess={handleRefresh}
-        mode="create"
-      />
-    </div>
+        {/* Create User Form */}
+        <UserForm
+          isOpen={showCreateForm}
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={handleRefresh}
+          mode="create"
+        />
+      </div>
+    </RoleGuard>
   )
 }

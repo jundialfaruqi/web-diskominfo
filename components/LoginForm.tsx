@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, Loader2, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -27,6 +27,7 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
   const [passwordValid, setPasswordValid] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string[]}>({});
   const router = useRouter();
+  const { login } = useAuth();
 
   // Email validation
   useEffect(() => {
@@ -70,22 +71,29 @@ export default function LoginForm({ onSuccess, onError }: LoginFormProps) {
       
       setSuccess("Login berhasil! Mengalihkan ke dashboard...");
       
-      // Store token
-      if (rememberMe) {
-        Cookies.set("token", response.data.token, { expires: 30 }); // 30 days
-      } else {
-        Cookies.set("token", response.data.token); // Session cookie
-      }
+      // Store token and user data using AuthContext
+      const userData = {
+        id: response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        department: response.data.user.department,
+        phone: response.data.user.phone,
+        status: response.data.user.status,
+        roles: response.data.user.roles || [],
+        permissions: response.data.user.permissions || [],
+        created_at: response.data.user.created_at,
+        updated_at: response.data.user.updated_at
+      };
+      
+      login(response.data.token, userData);
       
       // Call success callback if provided
       if (onSuccess) {
         onSuccess();
       }
       
-      // Redirect after short delay
-      setTimeout(() => {
-        router.push("/admin/dashboard");
-      }, 1500);
+      // Redirect immediately after login
+      router.push("/admin/dashboard");
       
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
