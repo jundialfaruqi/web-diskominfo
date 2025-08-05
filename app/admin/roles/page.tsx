@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { RoleGuard } from '@/components/RoleGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,14 +96,30 @@ export default function RolesPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [permissionFilter, setPermissionFilter] = useState('all')
+  
+  // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [deletingRole, setDeletingRole] = useState<Role | null>(null)
+  
+  // Form data
   const [formData, setFormData] = useState({
     name: '',
     permissions: [] as number[]
   })
+
+  // Access denied toast prevention
+  const accessDeniedTimestamp = useRef<number>(0)
+
+  // Helper function to show access denied toast with timestamp check
+  const showAccessDeniedToast = () => {
+    const now = Date.now()
+    if (now - accessDeniedTimestamp.current > 5000) { // 5 seconds cooldown
+      toast.error('Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.')
+      accessDeniedTimestamp.current = now
+    }
+  }
 
   // Calculate statistics
   const calculateStats = (rolesData: Role[], permissionsData: Permission[]) => {
@@ -191,10 +207,20 @@ export default function RolesPage() {
         filterRoles(rolesData.data || [], searchTerm, permissionFilter)
       } else {
         if (!rolesResponse.ok) {
+          if (rolesResponse.status === 403) {
+            console.error('Access forbidden')
+            showAccessDeniedToast()
+            return
+          }
           const rolesError = await rolesResponse.json()
           console.error('Roles API Error:', rolesError)
         }
         if (!permissionsResponse.ok) {
+          if (permissionsResponse.status === 403) {
+            console.error('Access forbidden')
+            showAccessDeniedToast()
+            return
+          }
           const permissionsError = await permissionsResponse.json()
           console.error('Permissions API Error:', permissionsError)
         }
@@ -247,6 +273,9 @@ export default function RolesPage() {
         setIsCreateDialogOpen(false)
         setFormData({ name: '', permissions: [] })
         fetchData()
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        showAccessDeniedToast()
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal membuat role')
@@ -281,6 +310,9 @@ export default function RolesPage() {
         setEditingRole(null)
         setFormData({ name: '', permissions: [] })
         fetchData()
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        showAccessDeniedToast()
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal memperbarui role')
@@ -308,6 +340,9 @@ export default function RolesPage() {
       if (response.ok) {
         toast.success('Role berhasil dihapus')
         fetchData()
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        showAccessDeniedToast()
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal menghapus role')

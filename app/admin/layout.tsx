@@ -27,7 +27,6 @@ export default function AdminLayout({
   
   // Function to get page name based on pathname
   const getPageName = () => {
-    console.log('Current pathname:', pathname) // Debug log
     if (pathname === '/admin' || pathname === '/admin/dashboard') {
       return 'Dashboard'
     }

@@ -1,10 +1,10 @@
 "use client"
 
 import { useAuth } from '@/contexts/AuthContext'
-import { ReactNode, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { ReactNode } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle } from 'lucide-react'
+import { UnauthorizedError } from '@/components/UnauthorizedError'
 
 interface RoleGuardProps {
   children: ReactNode
@@ -24,7 +24,6 @@ export function RoleGuard({
   redirectTo
 }: RoleGuardProps) {
   const { user, isLoading, isAuthenticated, hasAnyRole, hasAnyPermission, hasRole, hasPermission } = useAuth()
-  const router = useRouter()
 
   // Tampilkan loading saat mengecek autentikasi
   if (isLoading) {
@@ -86,59 +85,12 @@ export function RoleGuard({
     }
   }
 
-  // Debug log
-  console.log('RoleGuard Debug:', {
-    user: user,
-    isLoading,
-    isAuthenticated,
-    userRoles: user?.roles?.map(r => r.name),
-    userPermissions: user?.permissions?.map(p => p.name),
-    allowedRoles,
-    allowedPermissions,
-    hasAccess,
-    redirectTo,
-    pathname: window.location.pathname
-  })
-
-
-
-
-
-  // Handle redirect dengan useEffect
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && !hasAccess && redirectTo) {
-      console.log('Performing redirect to:', redirectTo)
-      router.replace(redirectTo)
-    }
-  }, [isLoading, isAuthenticated, hasAccess, redirectTo, router])
-
   if (!hasAccess) {
-    if (redirectTo) {
-      // Tampilkan loading saat redirect
-      return (
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      )
-    }
-
     return fallback || (
-      <Alert className="border-red-200 bg-red-50">
-        <AlertTriangle className="h-4 w-4 text-red-600" />
-        <AlertDescription className="text-red-800">
-          Anda tidak memiliki akses untuk melihat halaman ini.
-          {allowedRoles.length > 0 && (
-            <div className="mt-2">
-              <strong>Role yang dibutuhkan:</strong> {allowedRoles.join(', ')}
-            </div>
-          )}
-          {allowedPermissions.length > 0 && (
-            <div className="mt-2">
-              <strong>Permission yang dibutuhkan:</strong> {allowedPermissions.join(', ')}
-            </div>
-          )}
-        </AlertDescription>
-      </Alert>
+      <UnauthorizedError 
+        allowedRoles={allowedRoles}
+        allowedPermissions={allowedPermissions}
+      />
     )
   }
 

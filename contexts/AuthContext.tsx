@@ -1,10 +1,11 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import Cookies from 'js-cookie'
 import { useRouter } from 'next/navigation'
 
 interface User {
+  avatar: string | Blob | undefined
   id: number
   name: string
   email: string
@@ -87,15 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(authToken)
     setUser(userData)
     setIsAuthenticated(true)
-    
-    // Force multiple re-renders to ensure UI updates
-    setTimeout(() => {
-      setUser({...userData})
-    }, 50)
-    
-    setTimeout(() => {
-      setUser({...userData})
-    }, 200)
   }
 
   const logout = () => {
@@ -106,25 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/dk-login')
   }
 
-  const hasRole = (role: string): boolean => {
+  const hasRole = useCallback((role: string): boolean => {
     return user?.roles?.some(r => r.name === role) || false
-  }
+  }, [user?.roles])
 
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     return user?.permissions?.some(p => p.name === permission) || false
-  }
+  }, [user?.permissions])
 
-  const hasAnyRole = (roles: string[]): boolean => {
+  const hasAnyRole = useCallback((roles: string[]): boolean => {
     return roles.some(role => hasRole(role))
-  }
+  }, [hasRole])
 
-  const hasAnyPermission = (permissions: string[]): boolean => {
+  const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     return permissions.some(permission => hasPermission(permission))
-  }
+  }, [hasPermission])
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     await validateToken()
-  }
+  }, [])
 
   useEffect(() => {
     validateToken()

@@ -62,9 +62,12 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [showForm, setShowForm] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [accessDeniedShown, setAccessDeniedShown] = useState(false)
 
   const fetchUsers = async (page = 1, search = '', role = '', status = '') => {
     try {
@@ -98,6 +101,14 @@ export default function UsersPage() {
           Cookies.remove('token')
           toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
           window.location.href = '/dk-login'
+          return
+        }
+        if (response.status === 403) {
+          console.error('Access forbidden')
+          if (!accessDeniedShown) {
+            toast.error('Akses ditolak. Anda tidak memiliki izin untuk melihat halaman ini.')
+            setAccessDeniedShown(true)
+          }
           return
         }
         toast.error(data.message || 'Gagal mengambil data user')
@@ -135,6 +146,13 @@ export default function UsersPage() {
         Cookies.remove('token')
         toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
         window.location.href = '/dk-login'
+        return
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        if (!accessDeniedShown) {
+          toast.error('Akses ditolak. Anda tidak memiliki izin untuk melihat statistik ini.')
+          setAccessDeniedShown(true)
+        }
         return
       }
     } catch (error) {
@@ -188,6 +206,99 @@ export default function UsersPage() {
     )
   }
 
+  const handleEdit = (user: User) => {
+    setEditingUser(user)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (userId: number) => {
+    try {
+      const token = Cookies.get('token')
+      if (!token) {
+        toast.error('Token tidak ditemukan. Silakan login kembali.')
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        toast.success('User berhasil dihapus')
+        await handleRefresh()
+      } else {
+        toast.error('Gagal menghapus user')
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      toast.error('Terjadi kesalahan saat menghapus user')
+    }
+  }
+
+  const handleFormSubmit = async () => {
+    setShowForm(false)
+    setEditingUser(null)
+    await handleRefresh()
+  }
+
+  return (
+    <RoleGuard allowedPermissions={['view users']}>
+      <UsersContent
+        users={users}
+        setUsers={setUsers}
+        stats={stats}
+        setStats={setStats}
+        isLoading={isLoading}
+        setIsLoading={setIsLoading}
+        isRefreshing={isRefreshing}
+        setIsRefreshing={setIsRefreshing}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedRole={roleFilter}
+        setSelectedRole={setRoleFilter}
+        selectedStatus={statusFilter}
+        setSelectedStatus={setStatusFilter}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        setTotalPages={setTotalPages}
+        showForm={showForm}
+        setShowForm={setShowForm}
+        editingUser={editingUser}
+        setEditingUser={setEditingUser}
+        fetchUsers={fetchUsers}
+        fetchStats={fetchStats}
+        handleRefresh={handleRefresh}
+        handleEdit={handleEdit}
+        handleDelete={handleDelete}
+        handleFormSubmit={handleFormSubmit}
+        handleFilterChange={handleFilterChange}
+        showCreateForm={showCreateForm}
+        setShowCreateForm={setShowCreateForm}
+        accessDeniedShown={accessDeniedShown}
+        setAccessDeniedShown={setAccessDeniedShown}
+        handlePageChange={handlePageChange}
+      />
+    </RoleGuard>
+  )
+}
+
+// Komponen terpisah untuk konten yang hanya dimuat setelah permission check
+function UsersContent({
+  users, setUsers, stats, setStats, isLoading, setIsLoading,
+  isRefreshing, setIsRefreshing, searchTerm, setSearchTerm,
+  selectedRole, setSelectedRole, selectedStatus, setSelectedStatus,
+  currentPage, setCurrentPage, totalPages, setTotalPages,
+  showForm, setShowForm, editingUser, setEditingUser,
+  fetchUsers, fetchStats, handleRefresh, handleEdit, handleDelete, handleFormSubmit, handleFilterChange,
+  showCreateForm, setShowCreateForm, accessDeniedShown, setAccessDeniedShown, handlePageChange
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+}: any) {
+  
   useEffect(() => {
     // Set page title
     document.title = 'Manajemen Users - Admin Dashboard'
@@ -211,9 +322,11 @@ export default function UsersPage() {
       </div>
     )
   }
+
+
+
   return (
-    <RoleGuard allowedPermissions={['view users']} redirectTo="/admin/dashboard">
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -270,7 +383,7 @@ export default function UsersPage() {
             
             {/* Filter - Sebelah Kanan */}
             <div className="flex flex-col sm:flex-row gap-4 lg:w-auto">
-              <Select value={roleFilter} onValueChange={(value) => handleFilterChange('role', value)}>
+              <Select value={selectedRole} onValueChange={(value) => handleFilterChange('role', value)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter Role" />
                 </SelectTrigger>
@@ -280,7 +393,7 @@ export default function UsersPage() {
                   <SelectItem value="editor">Editor</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
+              <Select value={selectedStatus} onValueChange={(value) => handleFilterChange('status', value)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
@@ -440,6 +553,5 @@ export default function UsersPage() {
           mode="create"
         />
       </div>
-    </RoleGuard>
-  )
-}
+    )
+  }

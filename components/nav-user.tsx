@@ -50,13 +50,10 @@ export function NavUser() {
   const { user, logout } = useAuth()
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
   
-  // Debug user data changes
+  // Effect for user data changes
   useEffect(() => {
-    console.log('NavUser: User data changed', {
-      user: user?.name,
-      roles: user?.roles?.map(r => r.name)
-    })
-  }, [user, user?.roles])
+    // Effect for user data changes
+  }, [user])
 
   const handleLogout = () => {
     logout()

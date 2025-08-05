@@ -39,12 +39,6 @@ import {
 
 // Function to get data with active state based on current pathname
 const getData = (pathname: string, user: any) => {
-  console.log('getData called with user:', {
-    userId: user?.id,
-    userName: user?.name,
-    roles: user?.roles,
-    permissions: user?.permissions
-  })
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isActiveMenu = (url: string, items?: any[]) => {
@@ -102,7 +96,6 @@ const getData = (pathname: string, user: any) => {
       // Menu Pengguna hanya untuk super_admin
       ...((() => {
         const isSuperAdmin = user?.roles?.some((role: any) => role.name === 'super_admin')
-        console.log('Checking super_admin role:', { isSuperAdmin, userRoles: user?.roles })
         return isSuperAdmin
       })() ? [{
         title: "Pengguna",
@@ -115,7 +108,6 @@ const getData = (pathname: string, user: any) => {
         const hasRolePermission = user?.permissions?.some((permission: any) => 
           permission.name === 'manage roles' || permission.name === 'manage permissions'
         )
-        console.log('Checking role/permission access:', { hasRolePermission, userPermissions: user?.permissions })
         return hasRolePermission
       })() ? [{
         title: "Akses & Izin",
@@ -188,22 +180,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
   // Force re-render when user data changes
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('AppSidebar: User data changed', {
-        user: user?.name,
-        roles: user?.roles?.map(r => r.name),
-        permissions: user?.permissions?.map(p => p.name),
-        isLoading,
-        isAuthenticated,
-        hasRoles: !!user?.roles?.length,
-        hasPermissions: !!user?.permissions?.length
-      })
-    }
+    // Effect for user data changes
   }, [user, user?.roles, user?.permissions, isLoading, isAuthenticated])
   
   // Don't render sidebar until user data is available
   if (isLoading || !isAuthenticated || !user || !user.roles || !user.permissions) {
-    console.log('AppSidebar: Showing loading state', { isLoading, isAuthenticated, user: !!user, roles: !!user?.roles, permissions: !!user?.permissions })
     return (
       <Sidebar collapsible="icon" {...props}>
         <SidebarHeader>
@@ -224,17 +205,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     )
   }
   
-  console.log('AppSidebar: Rendering with user data', {
-    userRoles: user.roles,
-    userPermissions: user.permissions
-  })
-  
   const data = getData(pathname, user)
-
-  console.log('AppSidebar: Generated menu data', {
-    navMainCount: data.navMain.length,
-    navMainItems: data.navMain.map(item => ({ title: item.title, hasItems: !!item.items }))
-  })
 
   return (
     <Sidebar key={`sidebar-${user.id}-${user.roles?.length}-${user.permissions?.length}`} collapsible="icon" {...props}>

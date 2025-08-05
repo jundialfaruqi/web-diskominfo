@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { RoleGuard } from '@/components/RoleGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,7 +81,7 @@ interface PermissionStats {
 }
 
 export default function PermissionsPage() {
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [stats, setStats] = useState<PermissionStats>({
     total_permissions: 0,
@@ -92,6 +92,7 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null)
@@ -103,6 +104,20 @@ export default function PermissionsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [perPage, setPerPage] = useState(10)
+  // Flag to prevent duplicate access denied toasts with timestamp
+  const [accessDeniedShown, setAccessDeniedShown] = useState(false)
+  const accessDeniedTimestamp = useRef<number>(0)
+
+  // Helper function to show access denied toast only once per session
+  const showAccessDeniedToast = () => {
+    const now = Date.now()
+    // Only show toast if it hasn't been shown in the last 5 seconds
+    if (!accessDeniedShown && (now - accessDeniedTimestamp.current) > 5000) {
+      toast.error('Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.')
+      setAccessDeniedShown(true)
+      accessDeniedTimestamp.current = now
+    }
+  }
 
   // Fetch permission statistics
   const fetchStats = async () => {
@@ -117,6 +132,9 @@ export default function PermissionsPage() {
       if (response.ok) {
         const data = await response.json()
         setStats(data.data)
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        showAccessDeniedToast()
       } else {
         console.error('Failed to fetch permission statistics')
       }
@@ -155,6 +173,9 @@ export default function PermissionsPage() {
         setPermissions(Array.isArray(permissionsData) ? permissionsData : [])
         setCurrentPage(pagination?.current_page || 1)
         setTotalPages(pagination?.last_page || 1)
+      } else if (response.status === 403) {
+        console.error('Access forbidden')
+        showAccessDeniedToast()
       } else {
         const errorData = await response.json()
         console.error('API Error:', errorData)
@@ -162,7 +183,11 @@ export default function PermissionsPage() {
       }
     } catch (error) {
       console.error('Error fetching permissions:', error)
-      toast.error('Gagal memuat data permissions')
+      // Only show toast if it's not a network error that might be related to forbidden access
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        // Network error, might be CORS or connection issue
+        toast.error('Gagal memuat data permissions')
+      }
     } finally {
       setLoading(false)
       setIsRefreshing(false)
@@ -185,6 +210,27 @@ export default function PermissionsPage() {
     fetchPermissions(page, searchTerm)
   }
 
+  // Handle search with debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Only trigger search if component is mounted and not initial load
+    if (permissions.length > 0 || searchTerm !== '') {
+      searchTimeoutRef.current = setTimeout(() => {
+        setCurrentPage(1)
+        fetchPermissions(1, searchTerm)
+      }, 500)
+    }
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchTerm])
+
   // Handle search
   const handleSearch = (search: string) => {
     setSearchTerm(search)
@@ -198,12 +244,12 @@ export default function PermissionsPage() {
     setCurrentPage(1)
   }
 
-  // Effect to fetch data when perPage changes
+  // Effect to fetch data when currentPage or perPage changes (skip initial load)
   useEffect(() => {
-    if (token && perPage) {
+    if (token && currentPage && !loading) {
       fetchPermissions(currentPage, searchTerm)
     }
-  }, [perPage])
+  }, [currentPage, perPage])
 
   // Handle create permission
   const handleCreatePermission = async () => {
@@ -320,8 +366,8 @@ export default function PermissionsPage() {
       const loadData = async () => {
         setLoading(true)
         await Promise.all([
-          fetchPermissions(1, ''),
-          fetchStats()
+          fetchStats(),
+          fetchPermissions(1, '')
         ])
         setLoading(false)
       }
@@ -453,16 +499,7 @@ export default function PermissionsPage() {
                 <Input
                   placeholder="Cari permission berdasarkan nama..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setSearchTerm(value)
-                    // Debounce search
-                    setTimeout(() => {
-                      if (value === searchTerm) {
-                        handleSearch(value)
-                      }
-                    }, 500)
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -506,7 +543,7 @@ export default function PermissionsPage() {
                   <TableHead>Tipe</TableHead>
                   <TableHead>Guard</TableHead>
                   <TableHead>Dibuat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="w-[70px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -548,11 +585,10 @@ export default function PermissionsPage() {
                         <TableCell>
                           {new Date(permission.created_at).toLocaleDateString('id-ID')}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Buka menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
