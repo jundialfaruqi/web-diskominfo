@@ -171,7 +171,7 @@ export default function RolesPage() {
             'Accept': 'application/json'
           }
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/permissions`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/permissions/all`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
@@ -184,7 +184,7 @@ export default function RolesPage() {
         const permissionsData = await permissionsResponse.json()
         
         setRoles(rolesData.data || [])
-        setPermissions(permissionsData.data || [])
+        setPermissions(Array.isArray(permissionsData.data) ? permissionsData.data : [])
         
         // Calculate stats and filter
         calculateStats(rolesData.data || [], permissionsData.data || [])
@@ -399,7 +399,7 @@ export default function RolesPage() {
                   <div className="grid gap-2">
                     <Label>Permissions</Label>
                     <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                      {permissions.map((permission) => (
+                      {Array.isArray(permissions) && permissions.map((permission) => (
                         <div key={permission.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`permission-${permission.id}`}
@@ -513,7 +513,7 @@ export default function RolesPage() {
                     <SelectItem value="all">Semua Role</SelectItem>
                     <SelectItem value="with_permissions">Dengan Permission</SelectItem>
                     <SelectItem value="without_permissions">Tanpa Permission</SelectItem>
-                    {permissions.map((permission) => (
+                    {Array.isArray(permissions) && permissions.map((permission) => (
                       <SelectItem key={permission.id} value={permission.name}>
                         {permission.name}
                       </SelectItem>
@@ -642,7 +642,7 @@ export default function RolesPage() {
               <div className="grid gap-2">
                 <Label>Permissions</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                  {permissions.map((permission) => (
+                  {Array.isArray(permissions) && permissions.map((permission) => (
                     <div key={permission.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`edit-permission-${permission.id}`}

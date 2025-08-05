@@ -12,6 +12,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Users, Search, Plus, RefreshCw, Loader2 } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { toast } from "sonner"
 import Cookies from "js-cookie"
 import { UserTable } from "@/components/users/UserTable"
@@ -171,7 +180,12 @@ export default function UsersPage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-    fetchUsers(page, searchTerm, roleFilter, statusFilter)
+    fetchUsers(
+      page, 
+      searchTerm, 
+      roleFilter === 'all' ? '' : roleFilter, 
+      statusFilter === 'all' ? '' : statusFilter
+    )
   }
 
   useEffect(() => {
@@ -295,28 +309,124 @@ export default function UsersPage() {
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground whitespace-nowrap">
                 Halaman {currentPage} dari {totalPages}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+              <Pagination className="mx-0 justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (currentPage > 1) handlePageChange(currentPage - 1)
+                      }}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {/* First page */}
+                  {currentPage > 2 && (
+                    <>
+                      <PaginationItem>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(1)
+                          }}
+                          className="cursor-pointer"
+                        >
+                          1
+                        </PaginationLink>
+                      </PaginationItem>
+                      {currentPage > 3 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Previous page */}
+                  {currentPage > 1 && (
+                    <PaginationItem>
+                      <PaginationLink 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePageChange(currentPage - 1)
+                        }}
+                        className="cursor-pointer"
+                      >
+                        {currentPage - 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )}
+                  
+                  {/* Current page */}
+                  <PaginationItem>
+                    <PaginationLink 
+                      href="#"
+                      isActive
+                      className="cursor-default"
+                    >
+                      {currentPage}
+                    </PaginationLink>
+                  </PaginationItem>
+                  
+                  {/* Next page */}
+                  {currentPage < totalPages && (
+                    <PaginationItem>
+                      <PaginationLink 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePageChange(currentPage + 1)
+                        }}
+                        className="cursor-pointer"
+                      >
+                        {currentPage + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )}
+                  
+                  {/* Last page */}
+                  {currentPage < totalPages - 1 && (
+                    <>
+                      {currentPage < totalPages - 2 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      <PaginationItem>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(totalPages)
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {totalPages}
+                        </PaginationLink>
+                      </PaginationItem>
+                    </>
+                  )}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (currentPage < totalPages) handlePageChange(currentPage + 1)
+                      }}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </CardContent>

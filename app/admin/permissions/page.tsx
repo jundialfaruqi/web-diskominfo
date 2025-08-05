@@ -53,6 +53,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Plus, Edit, Trash2, Key, Search, RefreshCw, Loader2, Shield, Users, MoreHorizontal } from 'lucide-react'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
 
@@ -74,7 +83,6 @@ interface PermissionStats {
 export default function PermissionsPage() {
   const { token } = useAuth()
   const [permissions, setPermissions] = useState<Permission[]>([])
-  const [filteredPermissions, setFilteredPermissions] = useState<Permission[]>([])
   const [stats, setStats] = useState<PermissionStats>({
     total_permissions: 0,
     system_permissions: 0,
@@ -84,7 +92,6 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPermission, setEditingPermission] = useState<Permission | null>(null)
@@ -92,64 +99,15 @@ export default function PermissionsPage() {
   const [formData, setFormData] = useState({
     name: ''
   })
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [perPage, setPerPage] = useState(10)
 
-  // Calculate statistics
-  const calculateStats = (permissionsData: Permission[]) => {
-    const now = new Date()
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    
-    const systemPermissions = permissionsData.filter(p => 
-      p.name.includes('view') || p.name.includes('create') || p.name.includes('edit') || p.name.includes('delete')
-    ).length
-    
-    const recentPermissions = permissionsData.filter(p => 
-      new Date(p.created_at) > oneWeekAgo
-    ).length
-    
-    setStats({
-      total_permissions: permissionsData.length,
-      system_permissions: systemPermissions,
-      custom_permissions: permissionsData.length - systemPermissions,
-      recent_permissions: recentPermissions
-    })
-  }
-
-  // Filter permissions based on search and type filter
-  const filterPermissions = (permissionsData: Permission[], search: string, typeFilter: string) => {
-    let filtered = permissionsData
-    
-    // Search filter
-    if (search) {
-      filtered = filtered.filter(permission => 
-        permission.name.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-    
-    // Type filter
-    if (typeFilter !== 'all') {
-      const now = new Date()
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      
-      if (typeFilter === 'system') {
-        filtered = filtered.filter(p => 
-          p.name.includes('view') || p.name.includes('create') || p.name.includes('edit') || p.name.includes('delete')
-        )
-      } else if (typeFilter === 'custom') {
-        filtered = filtered.filter(p => 
-          !(p.name.includes('view') || p.name.includes('create') || p.name.includes('edit') || p.name.includes('delete'))
-        )
-      } else if (typeFilter === 'recent') {
-        filtered = filtered.filter(p => new Date(p.created_at) > oneWeekAgo)
-      }
-    }
-    
-    setFilteredPermissions(filtered)
-  }
-
-  // Fetch permissions
-  const fetchPermissions = async () => {
+  // Fetch permission statistics
+  const fetchStats = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/permissions`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/permissions/stats/overview`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
@@ -158,12 +116,45 @@ export default function PermissionsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        const permissionsData = data.data || []
-        setPermissions(permissionsData)
+        setStats(data.data)
+      } else {
+        console.error('Failed to fetch permission statistics')
+      }
+    } catch (error) {
+      console.error('Error fetching permission statistics:', error)
+    }
+  }
+
+  // Remove filterPermissions function since filtering is now done server-side
+
+  // Fetch permissions
+  const fetchPermissions = async (page = 1, search = '') => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: perPage.toString()
+      })
+      
+      if (search) {
+        params.append('search', search)
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/permissions?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const permissionsData = data.data?.data || []
+        const pagination = data.data
         
-        // Calculate stats and filter
-        calculateStats(permissionsData)
-        filterPermissions(permissionsData, searchTerm, typeFilter)
+        // Ensure permissions is always an array
+        setPermissions(Array.isArray(permissionsData) ? permissionsData : [])
+        setCurrentPage(pagination?.current_page || 1)
+        setTotalPages(pagination?.last_page || 1)
       } else {
         const errorData = await response.json()
         console.error('API Error:', errorData)
@@ -181,9 +172,38 @@ export default function PermissionsPage() {
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    await fetchPermissions()
+    await Promise.all([
+      fetchPermissions(currentPage, searchTerm),
+      fetchStats()
+    ])
     toast.success('Data berhasil diperbarui')
   }
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    fetchPermissions(page, searchTerm)
+  }
+
+  // Handle search
+  const handleSearch = (search: string) => {
+    setSearchTerm(search)
+    setCurrentPage(1)
+    fetchPermissions(1, search)
+  }
+
+  // Handle per page change
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage)
+    setCurrentPage(1)
+  }
+
+  // Effect to fetch data when perPage changes
+  useEffect(() => {
+    if (token && perPage) {
+      fetchPermissions(currentPage, searchTerm)
+    }
+  }, [perPage])
 
   // Handle create permission
   const handleCreatePermission = async () => {
@@ -204,7 +224,10 @@ export default function PermissionsPage() {
         toast.success('Permission berhasil dibuat')
         setIsCreateDialogOpen(false)
         setFormData({ name: '' })
-        fetchPermissions()
+        await Promise.all([
+          fetchPermissions(),
+          fetchStats()
+        ])
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal membuat permission')
@@ -237,7 +260,10 @@ export default function PermissionsPage() {
         setIsEditDialogOpen(false)
         setEditingPermission(null)
         setFormData({ name: '' })
-        fetchPermissions()
+        await Promise.all([
+          fetchPermissions(),
+          fetchStats()
+        ])
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal memperbarui permission')
@@ -263,7 +289,10 @@ export default function PermissionsPage() {
 
       if (response.ok) {
         toast.success('Permission berhasil dihapus')
-        fetchPermissions()
+        await Promise.all([
+          fetchPermissions(),
+          fetchStats()
+        ])
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || 'Gagal menghapus permission')
@@ -283,15 +312,20 @@ export default function PermissionsPage() {
     setIsEditDialogOpen(true)
   }
 
-  // Filter effect
-  useEffect(() => {
-    filterPermissions(permissions, searchTerm, typeFilter)
-  }, [searchTerm, typeFilter, permissions])
+  // Remove local filtering since we now use server-side pagination and search
 
   // Fetch data when token is available
   useEffect(() => {
     if (token) {
-      fetchPermissions()
+      const loadData = async () => {
+        setLoading(true)
+        await Promise.all([
+          fetchPermissions(1, ''),
+          fetchStats()
+        ])
+        setLoading(false)
+      }
+      loadData()
       document.title = 'Manajemen Permission - Admin Panel'
     }
   }, [token])
@@ -413,33 +447,39 @@ export default function PermissionsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Input Pencarian - Sebelah Kiri */}
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Cari permission berdasarkan nama..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Cari permission berdasarkan nama..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setSearchTerm(value)
+                    // Debounce search
+                    setTimeout(() => {
+                      if (value === searchTerm) {
+                        handleSearch(value)
+                      }
+                    }, 500)
+                  }}
+                  className="pl-10"
+                />
               </div>
-              
-              {/* Filter - Sebelah Kanan */}
-              <div className="flex flex-col sm:flex-row gap-4 lg:w-auto">
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter berdasarkan tipe" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Tampilkan:</span>
+                <Select value={perPage.toString()} onValueChange={(value) => handlePerPageChange(parseInt(value))}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Permission</SelectItem>
-                    <SelectItem value="system">Permission Sistem</SelectItem>
-                    <SelectItem value="custom">Permission Kustom</SelectItem>
-                    <SelectItem value="recent">Permission Terbaru</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">per halaman</span>
               </div>
             </div>
           </CardContent>
@@ -450,14 +490,15 @@ export default function PermissionsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
-              Daftar Permission ({filteredPermissions.length})
+              Daftar Permission ({permissions.length})
             </CardTitle>
             <CardDescription>
               Kelola permission yang tersedia dalam sistem
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="rounded-md border">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
@@ -469,14 +510,14 @@ export default function PermissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPermissions.length === 0 ? (
+                {permissions.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Key className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
-                          {searchTerm || typeFilter !== 'all' 
-                            ? 'Tidak ada permission yang sesuai dengan filter'
+                          {searchTerm 
+                            ? 'Tidak ada permission yang sesuai dengan pencarian'
                             : 'Belum ada permission yang dibuat'
                           }
                         </p>
@@ -484,7 +525,7 @@ export default function PermissionsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredPermissions.map((permission) => {
+                  Array.isArray(permissions) && permissions.map((permission) => {
                     const isSystemPermission = permission.name.includes('view') || 
                                              permission.name.includes('create') || 
                                              permission.name.includes('edit') || 
@@ -536,6 +577,130 @@ export default function PermissionsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground whitespace-nowrap">
+                  Halaman {currentPage} dari {totalPages}
+                </div>
+                <Pagination className="mx-0 justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (currentPage > 1) handlePageChange(currentPage - 1)
+                        }}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {/* First page */}
+                    {currentPage > 2 && (
+                      <>
+                        <PaginationItem>
+                          <PaginationLink 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handlePageChange(1)
+                            }}
+                            className="cursor-pointer"
+                          >
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                        {currentPage > 3 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Previous page */}
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(currentPage - 1)
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {currentPage - 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    {/* Current page */}
+                    <PaginationItem>
+                      <PaginationLink 
+                        href="#"
+                        isActive
+                        className="cursor-default"
+                      >
+                        {currentPage}
+                      </PaginationLink>
+                    </PaginationItem>
+                    
+                    {/* Next page */}
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationLink 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(currentPage + 1)
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {currentPage + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )}
+                    
+                    {/* Last page */}
+                    {currentPage < totalPages - 1 && (
+                      <>
+                        {currentPage < totalPages - 2 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handlePageChange(totalPages)
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {totalPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </>
+                    )}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (currentPage < totalPages) handlePageChange(currentPage + 1)
+                        }}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </CardContent>
         </Card>
 
