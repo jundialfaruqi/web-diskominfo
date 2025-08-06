@@ -32,7 +32,7 @@ import { MoreHorizontal, Edit, Trash2, Mail, Phone } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import { UserForm } from "./UserForm"
-import { ShowForRoles } from "@/components/RoleGuard"
+import { ShowForRoles, ShowForPermissions } from "@/components/RoleGuard"
 
 interface User {
   id: number
@@ -214,7 +214,7 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
                     {formatDate(user.created_at)}
                   </TableCell>
                   <TableCell>
-                    <ShowForRoles roles={['super_admin']}>
+                    <ShowForPermissions permissions={['edit users', 'delete users']}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -222,20 +222,24 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => setDeletingUser(user)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Hapus
-                          </DropdownMenuItem>
+                          <ShowForPermissions permissions={['edit users']}>
+                            <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </ShowForPermissions>
+                          <ShowForPermissions permissions={['delete users']}>
+                            <DropdownMenuItem 
+                              onClick={() => setDeletingUser(user)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Hapus
+                            </DropdownMenuItem>
+                          </ShowForPermissions>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </ShowForRoles>
+                    </ShowForPermissions>
                   </TableCell>
                 </TableRow>
               ))

@@ -93,10 +93,10 @@ const getData = (pathname: string, user: any) => {
           },
         ],
       },
-      // Menu Pengguna hanya untuk super_admin
+      // Menu Pengguna untuk user dengan permission 'view users'
       ...((() => {
-        const isSuperAdmin = user?.roles?.some((role: any) => role.name === 'super_admin')
-        return isSuperAdmin
+        const hasViewUsersPermission = user?.permissions?.some((permission: any) => permission.name === 'view users')
+        return hasViewUsersPermission
       })() ? [{
         title: "Pengguna",
         url: "/admin/users",

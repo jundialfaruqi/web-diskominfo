@@ -26,7 +26,8 @@ import Cookies from "js-cookie"
 import { UserTable } from "@/components/users/UserTable"
 import { UserForm } from "@/components/users/UserForm"
 import { UserStats } from "@/components/users/UserStats"
-import { RoleGuard } from "@/components/RoleGuard"
+import { RoleGuard, ShowForPermissions } from "@/components/RoleGuard"
+// import { DebugUserPermissions } from "@/components/DebugUserPermissions"
 
 interface User {
   id: number
@@ -345,13 +346,15 @@ function UsersContent({
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button 
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah User
-          </Button>
+          <ShowForPermissions permissions={['create users']}>
+            <Button 
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Tambah User
+            </Button>
+          </ShowForPermissions>
         </div>
       </div>
 
