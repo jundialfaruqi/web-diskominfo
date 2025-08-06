@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from 'react'
-import { RoleGuard } from '@/components/RoleGuard'
+import { RoleGuard, ShowForPermissions } from '@/components/RoleGuard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -387,7 +387,7 @@ export default function RolesPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['super_admin']}>
+    <RoleGuard allowedPermissions={['view roles']}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -407,14 +407,15 @@ export default function RolesPage() {
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Tambah Role
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
+            <ShowForPermissions permissions={['create roles']}>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Tambah Role
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Tambah Role Baru</DialogTitle>
                   <DialogDescription>
@@ -462,8 +463,9 @@ export default function RolesPage() {
                     Buat Role
                   </Button>
                 </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </ShowForPermissions>
           </div>
         </div>
 
@@ -578,7 +580,9 @@ export default function RolesPage() {
                   <TableHead>Nama Role</TableHead>
                   <TableHead>Permissions</TableHead>
                   <TableHead>Dibuat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <ShowForPermissions permissions={['edit roles', 'delete roles']}>
+                    <TableHead className="text-right">Aksi</TableHead>
+                  </ShowForPermissions>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -625,27 +629,33 @@ export default function RolesPage() {
                         {new Date(role.created_at).toLocaleDateString('id-ID')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Buka menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(role)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => setDeletingRole(role)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <ShowForPermissions permissions={['edit roles', 'delete roles']}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Buka menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <ShowForPermissions permissions={['edit roles']}>
+                                <DropdownMenuItem onClick={() => openEditDialog(role)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                              </ShowForPermissions>
+                              <ShowForPermissions permissions={['delete roles']}>
+                                <DropdownMenuItem 
+                                  onClick={() => setDeletingRole(role)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Hapus
+                                </DropdownMenuItem>
+                              </ShowForPermissions>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </ShowForPermissions>
                       </TableCell>
                     </TableRow>
                   ))

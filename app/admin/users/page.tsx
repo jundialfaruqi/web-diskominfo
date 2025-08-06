@@ -393,6 +393,7 @@ function UsersContent({
                 <SelectContent>
                   <SelectItem value="all">Semua Role</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="editor">Editor</SelectItem>
                 </SelectContent>
               </Select>

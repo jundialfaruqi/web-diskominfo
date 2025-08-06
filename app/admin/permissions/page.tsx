@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { RoleGuard } from '@/components/RoleGuard'
+import { RoleGuard, ShowForPermissions } from '@/components/RoleGuard'
 import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw, Loader2 } from 'lucide-react'
 import { DialogTrigger } from '@/components/ui/dialog'
@@ -24,6 +24,7 @@ export default function PermissionsPage() {
     setSearchTerm,
     currentPage,
     totalPages,
+    totalPermissions,
     perPage,
     handleRefresh,
     handlePageChange,
@@ -64,7 +65,7 @@ export default function PermissionsPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['super_admin']}>
+    <RoleGuard allowedPermissions={['view permissions']}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -84,13 +85,15 @@ export default function PermissionsPage() {
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button 
-              className="flex items-center gap-2"
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Tambah Permission
-            </Button>
+            <ShowForPermissions permissions={['create permissions']}>
+              <Button 
+                className="flex items-center gap-2"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Tambah Permission
+              </Button>
+            </ShowForPermissions>
           </div>
         </div>
 
@@ -111,6 +114,7 @@ export default function PermissionsPage() {
           searchTerm={searchTerm}
           currentPage={currentPage}
           totalPages={totalPages}
+          totalPermissions={totalPermissions}
           onEdit={handleEditPermission}
           onDelete={handleDeletePermission}
           onPageChange={handlePageChange}

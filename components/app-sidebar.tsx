@@ -106,7 +106,7 @@ const getData = (pathname: string, user: any) => {
       // Menu Role & Permission Management
       ...((() => {
         const hasRolePermission = user?.permissions?.some((permission: any) => 
-          permission.name === 'manage roles' || permission.name === 'manage permissions'
+          permission.name === 'view roles' || permission.name === 'view permissions'
         )
         return hasRolePermission
       })() ? [{
@@ -118,11 +118,11 @@ const getData = (pathname: string, user: any) => {
           { url: "/admin/permissions" },
         ]),
         items: [
-          ...(user?.permissions?.some((permission: any) => permission.name === 'manage roles') ? [{
+          ...(user?.permissions?.some((permission: any) => permission.name === 'view roles') ? [{
             title: "Role",
             url: "/admin/roles",
           }] : []),
-          ...(user?.permissions?.some((permission: any) => permission.name === 'manage permissions') ? [{
+          ...(user?.permissions?.some((permission: any) => permission.name === 'view permissions') ? [{
             title: "Permission",
             url: "/admin/permissions",
           }] : []),

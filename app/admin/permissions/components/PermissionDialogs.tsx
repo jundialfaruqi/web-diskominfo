@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
@@ -65,11 +65,11 @@ export function PermissionDialogs({
   }
 
   // Set edit form data when editing permission changes
-  useState(() => {
+  useEffect(() => {
     if (editingPermission) {
       setEditFormData({ name: editingPermission.name })
     }
-  })
+  }, [editingPermission])
 
   return (
     <>

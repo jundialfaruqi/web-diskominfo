@@ -18,6 +18,7 @@ export function usePermissions() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalPermissions, setTotalPermissions] = useState(0)
   const [perPage, setPerPage] = useState(10)
   const [accessDeniedShown, setAccessDeniedShown] = useState(false)
   const accessDeniedTimestamp = useRef<number>(0)
@@ -83,6 +84,7 @@ export function usePermissions() {
         setPermissions(Array.isArray(permissionsData) ? permissionsData : [])
         setCurrentPage(pagination?.current_page || 1)
         setTotalPages(pagination?.last_page || 1)
+        setTotalPermissions(pagination?.total || 0)
       } else if (response.status === 403) {
         console.error('Access forbidden')
         showAccessDeniedToast()
@@ -274,6 +276,7 @@ export function usePermissions() {
     setSearchTerm,
     currentPage,
     totalPages,
+    totalPermissions,
     perPage,
     
     // Actions

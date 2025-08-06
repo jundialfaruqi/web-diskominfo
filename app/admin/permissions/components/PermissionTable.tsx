@@ -5,24 +5,26 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Key, Edit, Trash2, MoreHorizontal } from 'lucide-react'
 import { Permission } from '../types'
 import { PermissionPagination } from './PermissionPagination'
+import { ShowForPermissions } from '@/components/RoleGuard'
 
 interface PermissionTableProps {
   permissions: Permission[]
   searchTerm: string
   currentPage: number
   totalPages: number
+  totalPermissions: number
   onEdit: (permission: Permission) => void
   onDelete: (permission: Permission) => void
   onPageChange: (page: number) => void
 }
 
-export function PermissionTable({ permissions, searchTerm, currentPage, totalPages, onEdit, onDelete, onPageChange }: PermissionTableProps) {
+export function PermissionTable({ permissions, searchTerm, currentPage, totalPages, totalPermissions, onEdit, onDelete, onPageChange }: PermissionTableProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Key className="h-5 w-5" />
-          Daftar Permission ({permissions.length})
+          Daftar Permission ({totalPermissions})
         </CardTitle>
         <CardDescription>
           Kelola permission yang tersedia dalam sistem
@@ -38,7 +40,9 @@ export function PermissionTable({ permissions, searchTerm, currentPage, totalPag
                 <TableHead>Tipe</TableHead>
                 <TableHead>Guard</TableHead>
                 <TableHead>Dibuat</TableHead>
-                <TableHead className="w-[70px]">Aksi</TableHead>
+                <ShowForPermissions permissions={['edit permissions', 'delete permissions']}>
+                  <TableHead className="w-[70px]">Aksi</TableHead>
+                </ShowForPermissions>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,6 +85,7 @@ export function PermissionTable({ permissions, searchTerm, currentPage, totalPag
                         {new Date(permission.created_at).toLocaleDateString('id-ID')}
                       </TableCell>
                       <TableCell>
+                      <ShowForPermissions permissions={['edit permissions', 'delete permissions']}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -88,19 +93,24 @@ export function PermissionTable({ permissions, searchTerm, currentPage, totalPag
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEdit(permission)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => onDelete(permission)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Hapus
-                            </DropdownMenuItem>
+                            <ShowForPermissions permissions={['edit permissions']}>
+                              <DropdownMenuItem onClick={() => onEdit(permission)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            </ShowForPermissions>
+                            <ShowForPermissions permissions={['delete permissions']}>
+                              <DropdownMenuItem 
+                                onClick={() => onDelete(permission)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Hapus
+                              </DropdownMenuItem>
+                            </ShowForPermissions>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      </ShowForPermissions>
                       </TableCell>
                     </TableRow>
                   )

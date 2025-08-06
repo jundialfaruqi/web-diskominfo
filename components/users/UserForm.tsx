@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
-import Cookies from "js-cookie"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface User {
   id?: number
@@ -33,6 +33,11 @@ interface User {
   status: string
 }
 
+interface Role {
+  id: number
+  name: string
+}
+
 interface UserFormProps {
   user?: User
   isOpen: boolean
@@ -42,12 +47,13 @@ interface UserFormProps {
 }
 
 export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormProps) {
+  const { token } = useAuth()
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     password: '',
     password_confirmation: '',
-    role: user?.roles?.[0]?.name || 'editor',
+    role: user?.roles?.[0]?.name || '',
     department: user?.department || '',
     phone: user?.phone || '',
     status: user?.status || 'active'
@@ -56,6 +62,28 @@ export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormPro
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false)
+  const [roles, setRoles] = useState<Role[]>([])
+
+  // Fetch roles from API
+  const fetchRoles = async () => {
+    try {
+      if (!token) return
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/roles`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setRoles(data.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    }
+  }
 
   // Update formData when user prop changes
   useEffect(() => {
@@ -65,7 +93,7 @@ export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormPro
         email: user.email || '',
         password: '',
         password_confirmation: '',
-        role: user.roles?.[0]?.name || 'editor',
+        role: user.roles?.[0]?.name || '',
         department: user.department || '',
         phone: user.phone || '',
         status: user.status || 'active'
@@ -73,13 +101,19 @@ export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormPro
     }
   }, [user])
 
+  // Fetch roles when dialog opens
+  useEffect(() => {
+    if (isOpen && token) {
+      fetchRoles()
+    }
+  }, [isOpen, token])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setErrors({})
 
     try {
-      const token = Cookies.get('token')
       if (!token) {
         toast.error('Token tidak ditemukan. Silakan login kembali.')
         return
@@ -113,7 +147,6 @@ export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormPro
       if (!response.ok) {
         if (response.status === 401) {
           // Token expired atau tidak valid
-          Cookies.remove('token')
           toast.error('Sesi Anda telah berakhir. Silakan login kembali.')
           window.location.href = '/dk-login'
           return
@@ -273,8 +306,11 @@ export function UserForm({ user, isOpen, onClose, onSuccess, mode }: UserFormPro
                 <SelectValue placeholder="Pilih role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="editor">Editor</SelectItem>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={role.name}>
+                    {role.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {errors.role && <p className="text-sm text-red-500">{errors.role[0]}</p>}

@@ -85,6 +85,8 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
     switch (roleName) {
       case 'super_admin':
         return 'Super Admin'
+      case 'admin':
+        return 'Admin'
       case 'editor':
         return 'Editor'
       default:
@@ -158,7 +160,9 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
               <TableHead>Kontak</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Bergabung</TableHead>
-              <TableHead className="w-[70px]">Aksi</TableHead>
+              <ShowForPermissions permissions={['edit users', 'delete users']}>
+                <TableHead className="w-[70px]">Aksi</TableHead>
+              </ShowForPermissions>
             </TableRow>
           </TableHeader>
           <TableBody>
